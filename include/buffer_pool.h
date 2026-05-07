@@ -3,6 +3,7 @@
 
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdbool.h>
 
 #include "bank.h"
 #define BUFFER_POOL_SIZE 5
@@ -23,7 +24,7 @@ typedef struct
 } BufferPool;
 
 void buffer_pool_init(BufferPool *pool);
-void buffer_pool_load(BufferPool *pool, int account_id);
+void buffer_pool_load(BufferPool *pool, int account_id, Account *acc);
 void buffer_pool_unload(BufferPool *pool, int account_id);
 void buffer_pool_destroy(BufferPool *pool);
 #endif
