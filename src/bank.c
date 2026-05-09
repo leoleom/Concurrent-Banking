@@ -1,5 +1,4 @@
 #include "bank.h"
-#include "buffer_pool.h"
 #include "lock_mgr.h"
 #include <stdio.h>
 #include <string.h>
@@ -8,7 +7,6 @@
 
 /* set by main() before any threads are spawned */
 extern Bank *g_bank;
-extern BufferPool *g_pool;
 
 void bank_init(Bank *bank)
 {
