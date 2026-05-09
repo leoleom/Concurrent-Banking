@@ -82,52 +82,38 @@ int get_balance(int account_id) {
 
 void deposit(int account_id, int amount_centavos) {
     Account* acc = &g_bank->accounts[account_id];
-    
-    pthread_rwlock_wrlock(&acc->lock);
+    lock_single_account(acc);
     acc->balance_centavos += amount_centavos;
-    pthread_rwlock_unlock(&acc->lock);
+    unlock_single_account(acc);
 }
 
 bool withdraw(int account_id, int amount_centavos) {
     Account* acc = &g_bank->accounts[account_id];
-    
-    pthread_rwlock_wrlock(&acc->lock);
-    
+    lock_single_account(acc);
     if (acc->balance_centavos < amount_centavos) {
-        pthread_rwlock_unlock(&acc->lock);
-        return false;  // Insufficient funds
+        unlock_single_account(acc);
+        return false;
     }
-    
     acc->balance_centavos -= amount_centavos;
-    pthread_rwlock_unlock(&acc->lock);
+    unlock_single_account(acc);
     return true;
 }
 
 bool transfer(int from_id, int to_id, int amount_centavos) {
-    // Acquire locks in consistent order to prevent deadlock
-    int first = (from_id < to_id) ? from_id : to_id;
-    int second = (from_id < to_id) ? to_id : from_id;
-    
-    Account* acc_first = &g_bank->accounts[first];
-    Account* acc_second = &g_bank->accounts[second];
-    
-    pthread_rwlock_wrlock(&acc_first->lock);
-    pthread_rwlock_wrlock(&acc_second->lock);
-    
-    // Check sufficient funds
-    Account* from_acc = &g_bank->accounts[from_id];
-    if (from_acc->balance_centavos < amount_centavos) {
-        pthread_rwlock_unlock(&acc_second->lock);
-        pthread_rwlock_unlock(&acc_first->lock);
+    Account* src = &g_bank->accounts[from_id];
+    Account* dst = &g_bank->accounts[to_id];
+
+    acquire_locks_ordered(src, dst);
+
+    if (src->balance_centavos < amount_centavos) {
+        release_two_locks(src, dst);
         return false;
     }
-    
-    // Perform transfer
-    g_bank->accounts[from_id].balance_centavos -= amount_centavos;
-    g_bank->accounts[to_id].balance_centavos += amount_centavos;
-    
-    pthread_rwlock_unlock(&acc_second->lock);
-    pthread_rwlock_unlock(&acc_first->lock);
+
+    src->balance_centavos -= amount_centavos;
+    dst->balance_centavos += amount_centavos;
+
+    release_two_locks(src, dst);
     return true;
 }
 
