@@ -2,9 +2,6 @@
 #include "bank.h"
 #include "buffer_pool.h"
 #include "timer.h"
-#include "lock_mgr.h"
-#include "metrics.h"
-#include "utils.h"
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
