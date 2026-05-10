@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include "transaction.h"
 
 /* set by main() before any threads are spawned */
 extern Bank *g_bank;
@@ -20,7 +19,7 @@ void bank_init(Bank *bank)
     }
 }
 
-int bank_add_account(Bank *bank, int account_id, int64_t balance_centavos)
+int bank_add_account(Bank *bank, int account_id, int balance_centavos)
 {
     pthread_mutex_lock(&bank->bank_lock);
 
@@ -65,30 +64,50 @@ void bank_destroy(Bank *bank)
     pthread_mutex_destroy(&bank->bank_lock);
 }
 
-
-
 /* helpers functions */
-int get_balance(int account_id) {
-    Account* acc = &g_bank->accounts[account_id];
-    
+int get_balance(int account_id)
+{
+    Account *acc = bank_find_account(g_bank, account_id);
+
+    if (!acc)
+    {
+        fprintf(stderr, "[bank] ERROR: get_balance: account %d not found\n", account_id);
+        return -1;
+    }
+
     pthread_rwlock_rdlock(&acc->lock);
     int balance = acc->balance_centavos;
     pthread_rwlock_unlock(&acc->lock);
-    
+
     return balance;
 }
 
-void deposit(int account_id, int amount_centavos) {
-    Account* acc = &g_bank->accounts[account_id];
+void deposit(int account_id, int amount_centavos)
+{
+    Account *acc = bank_find_account(g_bank, account_id);
+    if (!acc)
+    {
+        fprintf(stderr, "[bank] ERROR: deposit: account %d not found\n", account_id);
+        return;
+    }
+
     lock_single_account(acc);
     acc->balance_centavos += amount_centavos;
     unlock_single_account(acc);
 }
 
-bool withdraw(int account_id, int amount_centavos) {
-    Account* acc = &g_bank->accounts[account_id];
+bool withdraw(int account_id, int amount_centavos)
+{
+    Account *acc = bank_find_account(g_bank, account_id);
+    if (!acc)
+    {
+        fprintf(stderr, "[bank] ERROR: withdraw: account %d not found\n", account_id);
+        return false;
+    }
+
     lock_single_account(acc);
-    if (acc->balance_centavos < amount_centavos) {
+    if (acc->balance_centavos < amount_centavos)
+    {
         unlock_single_account(acc);
         return false;
     }
@@ -97,13 +116,21 @@ bool withdraw(int account_id, int amount_centavos) {
     return true;
 }
 
-bool transfer(int from_id, int to_id, int amount_centavos) {
-    Account* src = &g_bank->accounts[from_id];
-    Account* dst = &g_bank->accounts[to_id];
+bool transfer(int from_id, int to_id, int amount_centavos)
+{
+    Account *src = bank_find_account(g_bank, from_id);
+    Account *dst = bank_find_account(g_bank, to_id);
+ 
+    if (!src || !dst) {
+        fprintf(stderr, "[bank] ERROR: transfer: account not found (from=%d to=%d)\n",
+                from_id, to_id);
+        return false;
+    }
 
     acquire_locks_ordered(src, dst);
 
-    if (src->balance_centavos < amount_centavos) {
+    if (src->balance_centavos < amount_centavos)
+    {
         release_two_locks(src, dst);
         return false;
     }
@@ -114,4 +141,3 @@ bool transfer(int from_id, int to_id, int amount_centavos) {
     release_two_locks(src, dst);
     return true;
 }
-
