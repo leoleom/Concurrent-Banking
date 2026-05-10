@@ -23,8 +23,13 @@ typedef struct
 
 /* Prototypes */
 void bank_init(Bank *bank);
-int bank_add_account(Bank *bank, int account_id, int64_t balance_centavos);
-Account *bank_find_account(Bank *bank, int account_id);
 void bank_destroy(Bank *bank);
+int bank_add_account(Bank *bank, int account_id, int balance_centavos);
+Account *bank_find_account(Bank *bank, int account_id);
+
+void deposit(int account_id, int amount_centavos);
+bool withdraw(int account_id, int amount_centavos);
+bool transfer(int from_id, int to_id, int amount_centavos);
+int get_balance(int account_id);
 
 #endif
