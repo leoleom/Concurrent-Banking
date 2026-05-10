@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #define MAX_ACCOUNTS 100
 
