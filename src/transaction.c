@@ -1,4 +1,6 @@
 #include "transaction.h"
+#include "metrics.h"
+#include "lock_mgr.h"
 #include "bank.h"
 #include "buffer_pool.h"
 #include "timer.h"
@@ -8,7 +10,7 @@
 extern Bank *g_bank;
 extern BufferPool *g_pool;
 
-/* run transactions */
+// run transactions
 void *execute_transaction(void *arg)
 {
     Transaction *tx = (Transaction *)arg;
@@ -20,72 +22,149 @@ void *execute_transaction(void *arg)
     for (int i = 0; i < tx->num_ops; i++)
     {
         Operation *op = &tx->ops[i];
-        int tick_before = global_tick;
+
+        
 
         switch (op->type)
         {
         case OP_DEPOSIT:
-        {
-            Account *acc = bank_find_account(g_bank, op->account_id);
-            buffer_pool_load(g_pool, op->account_id, acc);
-            deposit(op->account_id, op->amount_centavos);
-            buffer_pool_unload(g_pool, op->account_id);
+
+            printf("  T%d started: DEPOSIT account %d amount PHP %d.%02d\n",
+                   tx->tx_id,
+                   op->account_id,
+                   op->amount_centavos / 100,
+                   op->amount_centavos % 100);
+
+            wait_until_tick(global_tick + 1);
+            pthread_mutex_lock(&tick_lock);
+            pthread_mutex_unlock(&tick_lock);
+
+            {
+                Account *acc = bank_find_account(g_bank, op->account_id);
+                buffer_pool_load(g_pool, op->account_id, acc);
+                deposit(op->account_id, op->amount_centavos);
+                buffer_pool_unload(g_pool, op->account_id);
+            }
+
+            printf("  T%d completed: DEPOSIT successful\n", tx->tx_id);
+
             break;
-        }
 
         case OP_WITHDRAW:
-        {
-            Account *acc = bank_find_account(g_bank, op->account_id);
-            buffer_pool_load(g_pool, op->account_id, acc);
-            if (!withdraw(op->account_id, op->amount_centavos))
+
+            printf("  T%d started: WITHDRAW account %d amount PHP %d.%02d\n",
+                   tx->tx_id,
+                   op->account_id,
+                   op->amount_centavos / 100,
+                   op->amount_centavos % 100);
+
+            wait_until_tick(global_tick + 1);
+            pthread_mutex_lock(&tick_lock);
+            pthread_mutex_unlock(&tick_lock);
+
             {
-                tx->status = TX_ABORTED;
+                Account *acc = bank_find_account(g_bank, op->account_id);
+                buffer_pool_load(g_pool, op->account_id, acc);
+                if (!withdraw(op->account_id, op->amount_centavos))
+                {
+                    tx->status = TX_ABORTED;
+                    buffer_pool_unload(g_pool, op->account_id);
+                    tx->actual_end = global_tick;
+                    return NULL;
+                }
                 buffer_pool_unload(g_pool, op->account_id);
-                tx->actual_end = global_tick;
-                return NULL;
             }
-            buffer_pool_unload(g_pool, op->account_id);
+
+            printf("  T%d completed: WITHDRAW successful\n", tx->tx_id);
             break;
-        }
 
         case OP_TRANSFER:
         {
             Account *src = bank_find_account(g_bank, op->account_id);
             Account *dst = bank_find_account(g_bank, op->target_account);
+
+            printf("  T%d started: TRANSFER from %d to %d amount PHP %d.%02d\n",
+                tx->tx_id,
+                op->account_id,
+                op->target_account,
+                op->amount_centavos / 100,
+                op->amount_centavos % 100);
+
+            wait_until_tick(global_tick + 1);
+            pthread_mutex_lock(&tick_lock);
+            pthread_mutex_unlock(&tick_lock);
+
             buffer_pool_load(g_pool, op->account_id, src);
             buffer_pool_load(g_pool, op->target_account, dst);
-            if (!transfer(op->account_id, op->target_account,
-                          op->amount_centavos))
+            
+            
+            acquire_locks_ordered(src, dst);
+            
+            printf("  T%d acquired lock on account %d\n",
+                tx->tx_id,
+                op->account_id);
+
+            printf("  [DEADLOCK PREVENTED] Lock ordering: T%d waiting for account %d\n",
+                tx->tx_id,
+                op->target_account);
+
+            if (!transfer(op->account_id,
+                        op->target_account,
+                        op->amount_centavos))
             {
                 tx->status = TX_ABORTED;
+
                 buffer_pool_unload(g_pool, op->account_id);
                 buffer_pool_unload(g_pool, op->target_account);
+
                 tx->actual_end = global_tick;
+
+                release_two_locks(src, dst);
+
                 return NULL;
             }
+
+            wait_until_tick(global_tick + 1);
+
+            pthread_mutex_lock(&tick_lock);
+            pthread_mutex_unlock(&tick_lock);
+
             buffer_pool_unload(g_pool, op->account_id);
             buffer_pool_unload(g_pool, op->target_account);
+
+            printf("  T%d completed: TRANSFER successful\n",
+                tx->tx_id);
+
+            release_two_locks(src, dst);
+
             break;
         }
-
         case OP_BALANCE:
-        {
-            Account *acc = bank_find_account(g_bank, op->account_id);
-            buffer_pool_load(g_pool, op->account_id, acc);
-            int balance = get_balance(op->account_id);
-            printf("T%d: Account %d balance = PHP %d.%02d\n",
-                   tx->tx_id, op->account_id,
-                   balance / 100, balance % 100);
-            buffer_pool_unload(g_pool, op->account_id);
+
+            printf("  T%d started: BALANCE account %d\n",
+                   tx->tx_id,
+                   op->account_id);
+
+            {
+                Account *acc = bank_find_account(g_bank,op->account_id);
+                buffer_pool_load(g_pool,op->account_id,acc);
+                metrics.total_loads++;
+                int balance = get_balance(op->account_id);
+                printf("  T%d: Account %d balance = PHP %d.%02d\n",
+                       tx->tx_id,
+                       op->account_id,
+                       balance / 100,
+                       balance % 100);
+                buffer_pool_unload(g_pool,op->account_id);
+            }
+            metrics.total_unloads++;
             break;
         }
-        }
-
-        tx->wait_ticks += (global_tick - tick_before);
     }
 
     tx->actual_end = global_tick;
     tx->status = TX_COMMITTED;
+
     return NULL;
 }
 
