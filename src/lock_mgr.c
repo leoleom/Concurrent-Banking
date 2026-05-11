@@ -13,6 +13,10 @@ void acquire_locks_ordered(Account *a, Account *b)
     /* Always lock the lower account_id first — breaks circular wait */
     Account *first  = (a->account_id < b->account_id) ? a : b;
     Account *second = (a->account_id < b->account_id) ? b : a;
+    
+    // printf("[DEADLOCK PREVENTED] Lock ordering: account %d before %d\n",
+    //    first->account_id,
+    //    second->account_id);
 
     pthread_rwlock_wrlock(&first->lock);
     pthread_rwlock_wrlock(&second->lock);
