@@ -1,4 +1,5 @@
 #include "buffer_pool.h"
+#include "metrics.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -19,11 +20,19 @@ void buffer_pool_init(BufferPool *pool)
 // Load account into buffer pool (producer)
 void buffer_pool_load(BufferPool *pool, int account_id, Account *acc)
 {
-    sem_wait(&pool->empty_slots); // Wait for empty slot
+    // sem_wait(&pool->empty_slots); // Wait for empty slot
+
+    if (sem_trywait(&pool->empty_slots) != 0)
+    {
+        metrics.blocked_operations++;
+        sem_wait(&pool->empty_slots);
+    }
 
     pthread_mutex_lock(&pool->pool_lock);
 
     // Find empty slot and load account
+
+    int loaded = 0;
     for (int i = 0; i < BUFFER_POOL_SIZE; i++)
     {
         if (!pool->slots[i].in_use)
@@ -31,8 +40,25 @@ void buffer_pool_load(BufferPool *pool, int account_id, Account *acc)
             pool->slots[i].account_id = account_id;
             pool->slots[i].data = acc;
             pool->slots[i].in_use = true;
+            metrics.total_loads++; // increment loads for metrics
+            loaded = 1;
             break;
         }
+    }
+
+    if (!loaded)
+    { // defensive restore
+        pthread_mutex_unlock(&pool->pool_lock);
+        sem_post(&pool->empty_slots);
+        fprintf(stderr, "[pool] ERROR: load failed, no free slot\n");
+        return;
+    }
+
+    int used = 0;
+    for (int i = 0; i < BUFFER_POOL_SIZE; i++)
+    {
+        if (pool->slots[i].in_use)
+            used++; // increments pool usage
     }
 
     pthread_mutex_unlock(&pool->pool_lock);
@@ -55,8 +81,9 @@ void buffer_pool_unload(BufferPool *pool, int account_id)
         {
             pool->slots[i].in_use = false;
             pool->slots[i].account_id = -1;
-            pool->slots[i].data       = NULL;
-            printf("[pool]  unloaded acc=%-4d  slot=%d\n", account_id, i);
+            pool->slots[i].data = NULL;
+            metrics.total_unloads++;
+            // printf("[pool]  unloaded acc=%-4d  slot=%d\n", account_id, i);
             break;
         }
     }

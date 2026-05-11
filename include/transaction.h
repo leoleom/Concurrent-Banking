@@ -47,4 +47,8 @@ typedef struct
     TxStatus status;
 } Transaction;
 
+
+void *execute_transaction(void *arg);
+int parse_operation(const char *line, Operation *op);
+
 #endif
