@@ -10,6 +10,18 @@
 extern Bank *g_bank;
 extern BufferPool *g_pool;
 
+/* abort helper */
+static void abort_transaction(Transaction *tx, const char *reason)
+{
+    if (!tx)
+        return; // null check
+
+    tx->status = TX_ABORTED;
+    tx->actual_end = global_tick;
+    if (reason)
+        fprintf(stderr, "[tx] ABORT T%d: %s\n", tx->tx_id, reason);
+}
+
 /* run transactions */
 void *execute_transaction(void *arg)
 {
@@ -46,9 +58,7 @@ void *execute_transaction(void *arg)
                 Account *acc = bank_find_account(g_bank, op->account_id);
                 if (!acc)
                 {
-                    fprintf(stderr, "[tx] ERROR: DEPOSIT account %d not found\n", op->account_id);
-                    tx->status = TX_ABORTED;
-                    tx->actual_end = global_tick;
+                    abort_transaction(tx, "DEPOSIT account not found");
                     return NULL;
                 }
 
@@ -83,18 +93,15 @@ void *execute_transaction(void *arg)
                 Account *acc = bank_find_account(g_bank, op->account_id);
                 if (!acc)
                 {
-                    fprintf(stderr, "[tx] ERROR: WITHDRAW account %d not found\n", op->account_id);
-                    tx->status = TX_ABORTED;
-                    tx->actual_end = global_tick;
+                    abort_transaction(tx, "WITHDRAW account not found");
                     return NULL;
                 }
 
                 buffer_pool_load(g_pool, op->account_id, acc);
                 if (!withdraw(op->account_id, op->amount_centavos))
                 {
-                    tx->status = TX_ABORTED;
                     buffer_pool_unload(g_pool, op->account_id);
-                    tx->actual_end = global_tick;
+                    abort_transaction(tx, "WITHDRAW insufficient funds");
                     return NULL;
                 }
                 buffer_pool_unload(g_pool, op->account_id);
@@ -111,9 +118,7 @@ void *execute_transaction(void *arg)
             // abort if missing accounts
             if (!src || !dst)
             {
-                fprintf(stderr, "[tx] ERROR: TRANSFER account(s) not found\n");
-                tx->status = TX_ABORTED;
-                tx->actual_end = global_tick;
+                abort_transaction(tx, "TRANSFER account(s) not found");
                 return NULL;
             }
 
@@ -166,9 +171,7 @@ void *execute_transaction(void *arg)
                 Account *acc = bank_find_account(g_bank, op->account_id);
                 if (!acc)
                 {
-                    fprintf(stderr, "[tx] ERROR: BALANCE account %d not found\n", op->account_id);
-                    tx->status = TX_ABORTED;
-                    tx->actual_end = global_tick;
+                    abort_transaction(tx, "BALANCE account not found");
                     return NULL;
                 }
 
@@ -182,7 +185,6 @@ void *execute_transaction(void *arg)
                        balance % 100);
                 buffer_pool_unload(g_pool, op->account_id);
             }
-
         }
 
         tx->wait_ticks += (global_tick - tick_before);
@@ -196,6 +198,9 @@ void *execute_transaction(void *arg)
 /* trace parser */
 int parse_operation(const char *line, Operation *op)
 {
+    if (!line || !op)
+        return -1;
+
     char type[16];
     if (sscanf(line, "%15s", type) != 1)
         return -1;
