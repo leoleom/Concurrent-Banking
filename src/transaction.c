@@ -13,6 +13,10 @@ extern BufferPool *g_pool;
 /* run transactions */
 void *execute_transaction(void *arg)
 {
+    // null check
+    if (!arg)
+        return NULL;
+
     Transaction *tx = (Transaction *)arg;
 
     wait_until_tick(tx->start_tick);
@@ -55,13 +59,13 @@ void *execute_transaction(void *arg)
 
             printf("  T%d completed: DEPOSIT successful\n", tx->tx_id);
 
-        {
-            Account *acc = bank_find_account(g_bank, op->account_id);
-            buffer_pool_load(g_pool, op->account_id, acc);
-            deposit(op->account_id, op->amount_centavos);
-            buffer_pool_unload(g_pool, op->account_id);
-            break;
-        }
+            {
+                Account *acc = bank_find_account(g_bank, op->account_id);
+                buffer_pool_load(g_pool, op->account_id, acc);
+                deposit(op->account_id, op->amount_centavos);
+                buffer_pool_unload(g_pool, op->account_id);
+                break;
+            }
 
         case OP_WITHDRAW:
 
@@ -97,24 +101,21 @@ void *execute_transaction(void *arg)
             }
 
             printf("  T%d completed: WITHDRAW successful\n", tx->tx_id);
-        {
-            Account *acc = bank_find_account(g_bank, op->account_id);
-            buffer_pool_load(g_pool, op->account_id, acc);
-            if (!withdraw(op->account_id, op->amount_centavos))
-            {
-                tx->status = TX_ABORTED;
-                buffer_pool_unload(g_pool, op->account_id);
-                tx->actual_end = global_tick;
-                return NULL;
-            }
-            buffer_pool_unload(g_pool, op->account_id);
             break;
-        }
 
         case OP_TRANSFER:
         {
             Account *src = bank_find_account(g_bank, op->account_id);
             Account *dst = bank_find_account(g_bank, op->target_account);
+
+            // abort if missing accounts
+            if (!src || !dst)
+            {
+                fprintf(stderr, "[tx] ERROR: TRANSFER account(s) not found\n");
+                tx->status = TX_ABORTED;
+                tx->actual_end = global_tick;
+                return NULL;
+            }
 
             printf("  T%d started: TRANSFER from %d to %d amount PHP %d.%02d\n",
                    tx->tx_id,
@@ -130,18 +131,12 @@ void *execute_transaction(void *arg)
             buffer_pool_load(g_pool, op->account_id, src);
             buffer_pool_load(g_pool, op->target_account, dst);
 
-            printf("  T%d acquired lock on account %d\n",
-                   tx->tx_id,
-                   op->account_id);
-
             printf("  [DEADLOCK PREVENTED] Lock ordering: T%d waiting for account %d\n",
                    tx->tx_id,
                    op->target_account);
 
             if (!transfer(op->account_id,
                           op->target_account,
-                          op->amount_centavos))
-            if (!transfer(op->account_id, op->target_account,
                           op->amount_centavos))
             {
                 tx->status = TX_ABORTED;
@@ -178,7 +173,7 @@ void *execute_transaction(void *arg)
                 }
 
                 buffer_pool_load(g_pool, op->account_id, acc);
-                metrics.total_loads++;
+                // metrics.total_loads++;
                 int balance = get_balance(op->account_id);
                 printf("  T%d: Account %d balance = PHP %d.%02d\n",
                        tx->tx_id,
@@ -188,16 +183,6 @@ void *execute_transaction(void *arg)
                 buffer_pool_unload(g_pool, op->account_id);
             }
 
-        {
-            Account *acc = bank_find_account(g_bank, op->account_id);
-            buffer_pool_load(g_pool, op->account_id, acc);
-            int balance = get_balance(op->account_id);
-            printf("T%d: Account %d balance = PHP %d.%02d\n",
-                   tx->tx_id, op->account_id,
-                   balance / 100, balance % 100);
-            buffer_pool_unload(g_pool, op->account_id);
-            break;
-        }
         }
 
         tx->wait_ticks += (global_tick - tick_before);

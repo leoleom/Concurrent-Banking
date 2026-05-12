@@ -11,10 +11,17 @@ pthread_cond_t tick_changed = PTHREAD_COND_INITIALIZER;
 // increments global_tick
 void *timer_thread(void *arg)
 {
+    // null check
+    if (!arg)
+        return NULL;
+
     int tick_ms = *(int *)arg;
 
     while (simulation_running)
     {
+        if (tick_ms <= 0)
+            tick_ms = TICK_INTERVAL_MS; // enforce valid tick interval
+
         usleep(tick_ms * 1000);
 
         pthread_mutex_lock(&tick_lock);

@@ -1,17 +1,31 @@
 #include "lock_mgr.h"
 
-void lock_single_account(Account *a) {
-    pthread_rwlock_wrlock(&a->lock);
+void lock_single_account(Account *acc)
+{
+    // null check
+    if (!acc)
+        return
+
+            pthread_rwlock_wrlock(&acc->lock);
 }
 
-void unlock_single_account(Account *a) {
-    pthread_rwlock_unlock(&a->lock);
+void unlock_single_account(Account *acc)
+{
+    // null check
+    if (!acc)
+        return
+
+            pthread_rwlock_unlock(&acc->lock);
 }
 
 void acquire_locks_ordered(Account *a, Account *b)
 {
+    // null check
+    if (!a || !b)
+        return;
+
     /* Always lock the lower account_id first — breaks circular wait */
-    Account *first  = (a->account_id < b->account_id) ? a : b;
+    Account *first = (a->account_id < b->account_id) ? a : b;
     Account *second = (a->account_id < b->account_id) ? b : a;
 
     pthread_rwlock_wrlock(&first->lock);
@@ -20,6 +34,9 @@ void acquire_locks_ordered(Account *a, Account *b)
 
 void release_two_locks(Account *a, Account *b)
 {
-    pthread_rwlock_unlock(&a->lock);
-    pthread_rwlock_unlock(&b->lock);
+    if (a)
+        pthread_rwlock_unlock(&a->lock);
+        
+    if (b)
+        pthread_rwlock_unlock(&b->lock);
 }

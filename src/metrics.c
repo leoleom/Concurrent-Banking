@@ -15,6 +15,10 @@ void metrics_init(void)
 
 void metrics_record_tx(TxMetrics *m)
 {
+    // null check
+    if (!m)
+        return;
+
     pthread_mutex_lock(&metrics.lock);
     if (metrics.count < MAX_TX_METRICS)
         metrics.entries[metrics.count++] = *m;

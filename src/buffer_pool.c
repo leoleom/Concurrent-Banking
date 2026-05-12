@@ -5,6 +5,9 @@
 
 void buffer_pool_init(BufferPool *pool)
 {
+    if (!pool)
+        return;
+
     for (int i = 0; i < BUFFER_POOL_SIZE; i++)
     {
         pool->slots[i].account_id = -1;
@@ -20,8 +23,14 @@ void buffer_pool_init(BufferPool *pool)
 // Load account into buffer pool (producer)
 void buffer_pool_load(BufferPool *pool, int account_id, Account *acc)
 {
-    // sem_wait(&pool->empty_slots); // Wait for empty slot
+    // null check
+    if (!pool || !acc)
+    {
+        fprintf(stderr, "[pool] ERROR: load called with null args\n");
+        return;
+    }
 
+    // Wait for empty
     if (sem_trywait(&pool->empty_slots) != 0)
     {
         metrics.blocked_operations++;
@@ -47,7 +56,8 @@ void buffer_pool_load(BufferPool *pool, int account_id, Account *acc)
     }
 
     if (!loaded)
-    { // defensive restore
+    {
+        // defensive restore
         pthread_mutex_unlock(&pool->pool_lock);
         sem_post(&pool->empty_slots);
         fprintf(stderr, "[pool] ERROR: load failed, no free slot\n");
@@ -69,6 +79,10 @@ void buffer_pool_load(BufferPool *pool, int account_id, Account *acc)
 // Unload account from buffer pool (consumer)
 void buffer_pool_unload(BufferPool *pool, int account_id)
 {
+    // null check
+    if (!pool)
+        return;
+
     sem_wait(&pool->full_slots); // Wait for full slot
 
     pthread_mutex_lock(&pool->pool_lock);
@@ -95,6 +109,10 @@ void buffer_pool_unload(BufferPool *pool, int account_id)
 
 void buffer_pool_destroy(BufferPool *pool)
 {
+    // null check
+    if (!pool)
+        return;
+
     sem_destroy(&pool->empty_slots);
     sem_destroy(&pool->full_slots);
     pthread_mutex_destroy(&pool->pool_lock);

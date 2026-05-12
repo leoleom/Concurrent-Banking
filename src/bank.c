@@ -49,6 +49,10 @@ int bank_add_account(Bank *bank, int account_id, int balance_centavos)
 
 Account *bank_find_account(Bank *bank, int account_id)
 {
+    // null check
+    if (!bank)
+        return NULL;
+
     for (int i = 0; i < bank->num_accounts; i++)
     {
         if (bank->accounts[i].account_id == account_id)
@@ -59,6 +63,10 @@ Account *bank_find_account(Bank *bank, int account_id)
 
 void bank_destroy(Bank *bank)
 {
+    // null check
+    if (!bank)
+        return NULL;
+
     for (int i = 0; i < bank->num_accounts; i++)
         pthread_rwlock_destroy(&bank->accounts[i].lock);
     pthread_mutex_destroy(&bank->bank_lock);
@@ -71,7 +79,7 @@ int get_balance(int account_id)
 
     if (!acc)
     {
-        fprintf(stderr, "[bank] ERROR: get_balance: account %d not found\n", account_id);
+        fprintf(stderr, "[bank] ERROR: balance: account %d not found\n", account_id);
         return -1;
     }
 
@@ -120,8 +128,9 @@ bool transfer(int from_id, int to_id, int amount_centavos)
 {
     Account *src = bank_find_account(g_bank, from_id);
     Account *dst = bank_find_account(g_bank, to_id);
- 
-    if (!src || !dst) {
+
+    if (!src || !dst)
+    {
         fprintf(stderr, "[bank] ERROR: transfer: account not found (from=%d to=%d)\n",
                 from_id, to_id);
         return false;
