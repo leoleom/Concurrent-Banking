@@ -7,6 +7,7 @@ volatile int global_tick = 0;
 volatile int simulation_running = 1;
 pthread_mutex_t tick_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t tick_changed = PTHREAD_COND_INITIALIZER;
+extern int verbose; 
 
 // increments global_tick
 void *timer_thread(void *arg)
@@ -27,7 +28,10 @@ void *timer_thread(void *arg)
         pthread_mutex_lock(&tick_lock);
 
         global_tick++;
-        printf("\nTick %d:\n", global_tick);
+
+        if (verbose){
+            printf("\nTick %d:\n", global_tick);
+        }
         fflush(stdout);
 
         pthread_cond_broadcast(&tick_changed); // wakes transactions
