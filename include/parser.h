@@ -6,7 +6,6 @@
 int parse_args(int argc, char *argv[],
                char **accounts_file,
                char **trace_file,
-               char **deadlock_strategy,
                int *tick_ms);
 
 int load_accounts(const char *path);

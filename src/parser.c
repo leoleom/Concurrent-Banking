@@ -12,12 +12,10 @@ extern int verbose;
 int parse_args(int argc, char *argv[],
                char **accounts_file,
                char **trace_file,
-               char **deadlock_strategy,
                int *tick_ms)
 {
     *accounts_file = NULL;
     *trace_file = NULL;
-    *deadlock_strategy = NULL;
     *tick_ms = TICK_INTERVAL_MS;
 
     for (int i = 1; i < argc; i++) {
@@ -25,8 +23,6 @@ int parse_args(int argc, char *argv[],
             *accounts_file = argv[i] + 11;
         else if (strncmp(argv[i], "--trace=", 8) == 0)
             *trace_file = argv[i] + 8;
-        else if (strncmp(argv[i], "--deadlock=", 11) == 0)
-            *deadlock_strategy = argv[i] + 11;
         else if (strncmp(argv[i], "--tick-ms=", 10) == 0)
             *tick_ms = atoi(argv[i] + 10);
         else if (strcmp(argv[i], "--verbose") == 0)
@@ -45,18 +41,10 @@ int parse_args(int argc, char *argv[],
         fprintf(stderr, "ERROR: --trace=FILE is required\n");
         return -1;
     }
-    if (!*deadlock_strategy) {
-        fprintf(stderr, "ERROR: --deadlock=prevention|detection is required\n");
-        return -1;
-    }
-    if (strcmp(*deadlock_strategy, "prevention") != 0 &&
-        strcmp(*deadlock_strategy, "detection") != 0) {
-        fprintf(stderr, "ERROR: --deadlock must be 'prevention' or 'detection'\n");
-        return -1;
-    }
 
     return 0;
 }
+
 
 int load_accounts(const char *path)
 {
