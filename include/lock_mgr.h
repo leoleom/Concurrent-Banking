@@ -2,18 +2,17 @@
 #define LOCK_MGR_H
  
 #include "bank.h"
+#include "transaction.h"
  
 /*
  * Deadlock prevention (Strategy A):
  * Always acquire write locks in ascending account_id order.
- * This eliminates circular-wait — deadlock is structurally impossible.
  */
 
-void lock_single_account(Account *a);
-void unlock_single_account(Account *a);
-
-void acquire_locks_ordered(Account *a, Account *b);
+void lock_single_account(Account *acc);
+void unlock_single_account (Account *acc);
+void acquire_locks_ordered(Account *a, Account *b, Transaction * tx);
 void release_two_locks(Account *a, Account *b);
  
-#endif /* LOCK_MGR_H */
+#endif 
  

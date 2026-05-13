@@ -3,26 +3,38 @@
 #include <unistd.h>
 #include <stdio.h>
 
-volatile int    global_tick       = 0;
-volatile int    simulation_running = 1;
-pthread_mutex_t tick_lock         = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t  tick_changed      = PTHREAD_COND_INITIALIZER;
+volatile int global_tick = 0;
+volatile int simulation_running = 1;
+pthread_mutex_t tick_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t tick_changed = PTHREAD_COND_INITIALIZER;
+extern int verbose; 
 
- // increments global_tick
+// increments global_tick
 void *timer_thread(void *arg)
 {
+    // null check
+    if (!arg)
+        return NULL;
+
     int tick_ms = *(int *)arg;
 
-    while (simulation_running) {
+    while (simulation_running)
+    {
+        if (tick_ms <= 0)
+            tick_ms = TICK_INTERVAL_MS; // enforce valid tick interval
+
         usleep(tick_ms * 1000);
 
         pthread_mutex_lock(&tick_lock);
 
         global_tick++;
-        printf("\nTick %d:\n", global_tick);
+
+        if (verbose){
+            printf("\nTick %d:\n", global_tick);
+        }
         fflush(stdout);
 
-        pthread_cond_broadcast(&tick_changed); //wakes transactions
+        pthread_cond_broadcast(&tick_changed); // wakes transactions
         pthread_mutex_unlock(&tick_lock);
     }
 

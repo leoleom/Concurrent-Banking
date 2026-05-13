@@ -1,5 +1,7 @@
 #include "bank.h"
 #include "lock_mgr.h"
+#include "transaction.h"
+#include "timer.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -49,6 +51,10 @@ int bank_add_account(Bank *bank, int account_id, int balance_centavos)
 
 Account *bank_find_account(Bank *bank, int account_id)
 {
+    // null check
+    if (!bank)
+        return NULL;
+
     for (int i = 0; i < bank->num_accounts; i++)
     {
         if (bank->accounts[i].account_id == account_id)
@@ -59,6 +65,10 @@ Account *bank_find_account(Bank *bank, int account_id)
 
 void bank_destroy(Bank *bank)
 {
+    // null check
+    if (!bank)
+        return;
+
     for (int i = 0; i < bank->num_accounts; i++)
         pthread_rwlock_destroy(&bank->accounts[i].lock);
     pthread_mutex_destroy(&bank->bank_lock);
@@ -71,7 +81,7 @@ int get_balance(int account_id)
 
     if (!acc)
     {
-        fprintf(stderr, "[bank] ERROR: get_balance: account %d not found\n", account_id);
+        fprintf(stderr, "[bank] ERROR: balance: account %d not found\n", account_id);
         return -1;
     }
 
@@ -82,62 +92,73 @@ int get_balance(int account_id)
     return balance;
 }
 
+
 void deposit(int account_id, int amount_centavos)
 {
     Account *acc = bank_find_account(g_bank, account_id);
-    if (!acc)
-    {
+    if (!acc) {
         fprintf(stderr, "[bank] ERROR: deposit: account %d not found\n", account_id);
         return;
     }
 
-    lock_single_account(acc);
+    int tick_before = global_tick; // record tick before lock attempt
+    pthread_rwlock_wrlock(&acc->lock);
+    int tick_after = global_tick;  // record tick after lock acquired
+    int wait_ticks = tick_after - tick_before;
+
+    // Perform operation
     acc->balance_centavos += amount_centavos;
-    unlock_single_account(acc);
+
+    pthread_rwlock_unlock(&acc->lock);
+
+    //accumulate wait time into metrics
+    current_tx->wait_ticks += wait_ticks;
 }
 
-bool withdraw(int account_id, int amount_centavos)
+int withdraw(int account_id, int amount_centavos)
 {
     Account *acc = bank_find_account(g_bank, account_id);
-    if (!acc)
-    {
+    if (!acc) {
         fprintf(stderr, "[bank] ERROR: withdraw: account %d not found\n", account_id);
         return false;
     }
 
-    lock_single_account(acc);
-    if (acc->balance_centavos < amount_centavos)
-    {
-        unlock_single_account(acc);
-        return false;
+    int tick_before = global_tick;
+    pthread_rwlock_wrlock(&acc->lock);
+    int tick_after = global_tick;
+    int wait_ticks = tick_after - tick_before;
+
+    bool success = false;
+    if (acc->balance_centavos >= amount_centavos) {
+        acc->balance_centavos -= amount_centavos;
+        success = true;
     }
-    acc->balance_centavos -= amount_centavos;
-    unlock_single_account(acc);
-    return true;
+
+    pthread_rwlock_unlock(&acc->lock);
+    if (current_tx) current_tx->wait_ticks += wait_ticks;
+
+    return success;
 }
 
-bool transfer(int from_id, int to_id, int amount_centavos)
+int transfer(int src_id, int dst_id, int amount_centavos, Transaction *tx)
 {
-    Account *src = bank_find_account(g_bank, from_id);
-    Account *dst = bank_find_account(g_bank, to_id);
- 
+    Account *src = bank_find_account(g_bank, src_id);
+    Account *dst = bank_find_account(g_bank, dst_id);
+
     if (!src || !dst) {
-        fprintf(stderr, "[bank] ERROR: transfer: account not found (from=%d to=%d)\n",
-                from_id, to_id);
-        return false;
+        fprintf(stderr, "[bank] ERROR: transfer: invalid account(s)\n");
+        return 0;
     }
 
-    acquire_locks_ordered(src, dst);
+    acquire_locks_ordered(src, dst, tx);
 
-    if (src->balance_centavos < amount_centavos)
-    {
-        release_two_locks(src, dst);
-        return false;
+    int success = 0;
+    if (src->balance_centavos >= amount_centavos) {
+        src->balance_centavos -= amount_centavos;
+        dst->balance_centavos += amount_centavos;
+        success = 1;
     }
-
-    src->balance_centavos -= amount_centavos;
-    dst->balance_centavos += amount_centavos;
 
     release_two_locks(src, dst);
-    return true;
+    return success;
 }

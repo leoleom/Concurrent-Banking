@@ -15,6 +15,10 @@ void metrics_init(void)
 
 void metrics_record_tx(TxMetrics *m)
 {
+    // null check
+    if (!m)
+        return;
+
     pthread_mutex_lock(&metrics.lock);
     if (metrics.count < MAX_TX_METRICS)
         metrics.entries[metrics.count++] = *m;
@@ -36,7 +40,8 @@ void metrics_report(int total_ticks)
 
     int committed = 0, aborted = 0, total_wait = 0;
 
-    for (int i = 0; i < metrics.count; i++) {
+    for (int i = 0; i < metrics.count; i++)
+    {
         TxMetrics *m = &metrics.entries[i];
         printf("T%-5d %-10d %-12d %-5d %-10d %-10s\n",
                m->tx_id,
@@ -45,8 +50,10 @@ void metrics_report(int total_ticks)
                m->actual_end,
                m->wait_ticks,
                m->committed ? "COMMITTED" : "ABORTED");
-        if (m->committed) committed++;
-        else              aborted++;
+        if (m->committed)
+            committed++;
+        else
+            aborted++;
         total_wait += m->wait_ticks;
     }
 
@@ -74,19 +81,20 @@ void metrics_report(int total_ticks)
     pthread_mutex_unlock(&metrics.lock);
 }
 
-//verification of total money after completion of transactions
+// verification of total money after completion of transactions
 void metrics_conservation_check(int initial_total, int final_total)
 {
     char ibuf[24], fbuf[24];
     fmt_centavos(initial_total, ibuf, sizeof(ibuf));
-    fmt_centavos(final_total,   fbuf, sizeof(fbuf));
+    fmt_centavos(final_total, fbuf, sizeof(fbuf));
 
     printf("\nInitial total: %s\n", ibuf);
-    printf("Final total  : %s\n",   fbuf);
+    printf("Final total  : %s\n", fbuf);
 
     if (initial_total == final_total)
         printf("Conservation check: PASSED\n\n");
-    else {
+    else
+    {
         char dbuf[24];
         fmt_centavos(final_total - initial_total, dbuf, sizeof(dbuf));
         printf("Conservation check: FAILED (discrepancy: %s)\n\n", dbuf);
