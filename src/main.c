@@ -90,7 +90,6 @@ int main(int argc, char *argv[])
     simulation_running = 0;
 
     int final_total = 0;
-
     if (verbose) {
         printf("\n=== Summary ===\n");
 
@@ -107,21 +106,21 @@ int main(int argc, char *argv[])
         printf("Aborted            : %d\n", aborted);
         printf("Total ticks        : %d\n", global_tick + 1);
         printf("ThreadSanitizer    : run with 'make debug' to verify\n");
+    }
 
-        printf("\n--- Final Account Balances ---\n");
-        for (int i = 0; i < bank.num_accounts; i++)
-        {
-            Account *a = &bank.accounts[i];
+    printf("\n--- Final Account Balances ---\n");
+    for (int i = 0; i < bank.num_accounts; i++)
+    {
+        Account *a = &bank.accounts[i];
 
-            // null check
-            if (!a)
-                continue;
+        // null check
+        if (!a)
+            continue;
 
-            char buf[24];
-            fmt_centavos(a->balance_centavos, buf, sizeof(buf));
-            printf("  Account %-6d  %s\n", a->account_id, buf);
-            final_total += a->balance_centavos;
-        }
+        char buf[24];
+        fmt_centavos(a->balance_centavos, buf, sizeof(buf));
+        printf("  Account %-6d  %s\n", a->account_id, buf);
+        final_total += a->balance_centavos;
     }
 
     // for metrics regis
