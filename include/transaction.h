@@ -4,6 +4,8 @@
 #include <pthread.h>
 #include <stdint.h>
 
+#define MAX_OPERATIONS 256
+
 typedef enum
 {
     OP_DEPOSIT,  // Add money to account
@@ -31,7 +33,7 @@ typedef enum
 typedef struct
 {
     int tx_id;
-    Operation ops[256]; // Max 256 operations per transaction
+    Operation ops[MAX_OPERATIONS]; // Max 256 operations per transaction
     int num_ops;
     int start_tick; // When transaction should start
     pthread_t thread;
@@ -44,5 +46,8 @@ typedef struct
     // Status
     TxStatus status;
 } Transaction;
+
+void *execute_transaction(void *arg);
+int parse_operation(const char *line, Operation *op);
 
 #endif
