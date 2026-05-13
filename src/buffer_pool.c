@@ -37,12 +37,6 @@ void buffer_pool_load(BufferPool *pool, int account_id, Account *acc)
         sem_wait(&pool->empty_slots);
     }
 
-     if (sem_trywait(&pool->empty_slots) != 0)
-    {
-        metrics.blocked_operations++;
-        sem_wait(&pool->empty_slots);
-    }
-
     pthread_mutex_lock(&pool->pool_lock);
     // Find empty slot and load account
 
