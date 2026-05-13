@@ -146,9 +146,9 @@ Reader-writer locks provide performance benefits in workloads with many concurre
 
 ### Workloads Tested
 | Trace file            | Description                    | Expected outcome                                    |
-|-----------------------|-------------------------------=|-----------------------------------------------------|
+|-----------------------|--------------------------------|-----------------------------------------------------|
 | **trace_readers.txt** | Read‑heavy (many BALANCE ops)  | RWLock shows largest advantage (concurrent readers) |
-| **trace_deadlock.txt**| Write‑heavy (many TRANSFER ops)| RWLock ≈ Mutex (writes dominate)                  |
+| **trace_deadlock.txt**| Write‑heavy (many TRANSFER ops)| RWLock ≈ Mutex (writes dominate)                    |
 | **trace_simple.txt**  | Mixed workload                 | RWLock shows moderate advantage                     |
 
 ### Results Comparison
