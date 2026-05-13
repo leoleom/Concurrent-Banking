@@ -60,15 +60,6 @@ void buffer_pool_load(BufferPool *pool, int account_id, Account *acc)
         }
     }  
 
-    int used = 0;
-    for (int i = 0; i < BUFFER_POOL_SIZE; i++)
-    {
-        if (pool->slots[i].in_use)
-            used++; // increments pool usage
-    }
-    if (used > metrics.peak_pool_usage)
-        metrics.peak_pool_usage = used;
-
     if (!loaded)
     {
         // defensive restore
