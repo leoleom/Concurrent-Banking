@@ -69,6 +69,11 @@ void *execute_transaction(void *arg)
                 deposit(op->account_id, op->amount_centavos);
                 buffer_pool_unload(g_pool, op->account_id);
                 
+                /* Track deposit amount for conservation check */
+                pthread_mutex_lock(&metrics.lock);
+                metrics.total_deposits += op->amount_centavos;
+                pthread_mutex_unlock(&metrics.lock);
+                
                 if (verbose){
                     printf("  T%d completed: DEPOSIT successful\n", tx->tx_id);
                 }
@@ -113,6 +118,12 @@ void *execute_transaction(void *arg)
                 }
                 wait_until_tick(global_tick + 1);
                 buffer_pool_unload(g_pool, op->account_id);
+                
+                /* Track withdrawal amount for conservation check */
+                pthread_mutex_lock(&metrics.lock);
+                metrics.total_withdrawals += op->amount_centavos;
+                pthread_mutex_unlock(&metrics.lock);
+                
                 if (verbose){
                     printf("  T%d completed: WITHDRAW successful\n", tx->tx_id);
                 }
