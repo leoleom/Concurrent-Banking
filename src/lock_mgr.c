@@ -1,42 +1,47 @@
 #include "lock_mgr.h"
+#include "timer.h"
+#include "transaction.h"
+#include "metrics.h"
+#include <pthread.h>
+#include <stdio.h>
 
+extern int verbose;
 void lock_single_account(Account *acc)
 {
-    // null check
-    if (!acc)
-        return
+    if (!acc) return;
 
-            pthread_rwlock_wrlock(&acc->lock);
+    pthread_rwlock_wrlock(&acc->lock);
 }
 
 void unlock_single_account(Account *acc)
 {
-    // null check
-    if (!acc)
-        return
-
-            pthread_rwlock_unlock(&acc->lock);
+    if (!acc) return;
+    pthread_rwlock_unlock(&acc->lock);
 }
 
-void acquire_locks_ordered(Account *a, Account *b)
+void acquire_locks_ordered(Account *a, Account *b, Transaction *tx)
 {
-    // null check
-    if (!a || !b)
-        return;
+    if (!a || !b || !tx) return;
 
-    /* Always lock the lower account_id first — breaks circular wait */
     Account *first = (a->account_id < b->account_id) ? a : b;
-    Account *second = (a->account_id < b->account_id) ? b : a;
+    Account *second = (first == a) ? b : a;
+
+    int tick_before = global_tick;
 
     pthread_rwlock_wrlock(&first->lock);
+ 
+    tx->wait_ticks++; // increment wait tick if there is a lock acquisition
+
     pthread_rwlock_wrlock(&second->lock);
+
+    int tick_after = global_tick;
+    tx->wait_ticks += (tick_after - tick_before);
 }
 
+/* release both locks */
 void release_two_locks(Account *a, Account *b)
 {
-    if (a)
-        pthread_rwlock_unlock(&a->lock);
-        
-    if (b)
-        pthread_rwlock_unlock(&b->lock);
+    if (!a || !b) return; // SAFETY: null guard
+    pthread_rwlock_unlock(&a->lock);
+    pthread_rwlock_unlock(&b->lock);
 }

@@ -2,6 +2,7 @@
 #define LOCK_MGR_H
  
 #include "bank.h"
+#include "transaction.h"
  
 /*
  * Deadlock prevention (Strategy A):
@@ -10,7 +11,7 @@
 
 void lock_single_account(Account *acc);
 void unlock_single_account (Account *acc);
-void acquire_locks_ordered(Account *a, Account *b);
+void acquire_locks_ordered(Account *a, Account *b, Transaction * tx);
 void release_two_locks(Account *a, Account *b);
  
 #endif 
