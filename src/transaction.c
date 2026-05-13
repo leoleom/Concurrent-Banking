@@ -24,7 +24,7 @@ void abort_transaction(Transaction *tx, const char *reason)
         fprintf(stderr, "[tx] ABORT T%d: %s\n", tx->tx_id, reason);
 }
 
-/* run transactions */
+// run transactions
 void *execute_transaction(void *arg)
 {
     // null check
@@ -164,7 +164,6 @@ void *execute_transaction(void *arg)
             }
             break;
         }
-
         case OP_BALANCE:
 
             if (verbose){

@@ -16,4 +16,4 @@ debug: $(SRC)
 	$(CC) $(CFLAGS) -g -fsanitize=thread -o $(TARGET)_debug $^
  
 clean:
-	-del /f /q $(TARGET) $(TARGET)_debug
+	rm -f $(TARGET) $(TARGET)_debug

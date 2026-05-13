@@ -37,8 +37,13 @@ void buffer_pool_load(BufferPool *pool, int account_id, Account *acc)
         sem_wait(&pool->empty_slots);
     }
 
-    pthread_mutex_lock(&pool->pool_lock);
+     if (sem_trywait(&pool->empty_slots) != 0)
+    {
+        metrics.blocked_operations++;
+        sem_wait(&pool->empty_slots);
+    }
 
+    pthread_mutex_lock(&pool->pool_lock);
     // Find empty slot and load account
 
     int loaded = 0;
@@ -53,7 +58,16 @@ void buffer_pool_load(BufferPool *pool, int account_id, Account *acc)
             loaded = 1;
             break;
         }
+    }  
+
+    int used = 0;
+    for (int i = 0; i < BUFFER_POOL_SIZE; i++)
+    {
+        if (pool->slots[i].in_use)
+            used++; // increments pool usage
     }
+    if (used > metrics.peak_pool_usage)
+        metrics.peak_pool_usage = used;
 
     if (!loaded)
     {
