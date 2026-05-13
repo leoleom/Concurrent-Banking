@@ -175,6 +175,30 @@ make clean
 
 ## Automatest test
 
+To run all tests at once (ensure that everything is compiled first using make)
 ```bash
 make test
 ```
+**trace.txt**
+
+<img src="images/trace.jpg" alt="trace">
+
+**trace_abort.txt**
+
+<img src="images/trace_abort.jpg" alt="trace_abort">
+
+**trace_buffer.txt**
+
+<img src="images/trace_buffer.jpg" alt="trace_buffer">
+
+**trace_deadlock.txt**
+
+<img src="images/trace_deadlock.jpg" alt="trace_deadlock">
+
+**trace_readers.txt**
+
+<img src="images/trace_readers.jpg" alt="trace_readers">
+
+**trace_simple.txt**
+
+<img src="images/trace_simple.jpg" alt="trace">
