@@ -27,6 +27,8 @@ typedef struct
     int total_unloads;
     int peak_pool_usage;
     int blocked_operations;
+    int total_deposits;     /* Track total deposits in centavos */
+    int total_withdrawals;  /* Track total withdrawals in centavos */
     pthread_mutex_t lock;
 } MetricsRegistry;
 

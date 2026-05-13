@@ -84,19 +84,26 @@ void metrics_report(int total_ticks)
 // verification of total money after completion of transactions
 void metrics_conservation_check(int initial_total, int final_total)
 {
-    char ibuf[24], fbuf[24];
+    char ibuf[24], fbuf[24], ebuf[24];
     fmt_centavos(initial_total, ibuf, sizeof(ibuf));
     fmt_centavos(final_total, fbuf, sizeof(fbuf));
 
+    /* Expected total = initial + deposits - withdrawals */
+    int expected_total = initial_total + metrics.total_deposits - metrics.total_withdrawals;
+    fmt_centavos(expected_total, ebuf, sizeof(ebuf));
+
     printf("\nInitial total: %s\n", ibuf);
     printf("Final total  : %s\n", fbuf);
+    printf("Expected total: %s (after PHP %d.%02d deposits, PHP %d.%02d withdrawals)\n", 
+           ebuf, metrics.total_deposits / 100, metrics.total_deposits % 100,
+           metrics.total_withdrawals / 100, metrics.total_withdrawals % 100);
 
-    if (initial_total == final_total)
+    if (expected_total == final_total)
         printf("Conservation check: PASSED\n\n");
     else
     {
         char dbuf[24];
-        fmt_centavos(final_total - initial_total, dbuf, sizeof(dbuf));
+        fmt_centavos(final_total - expected_total, dbuf, sizeof(dbuf));
         printf("Conservation check: FAILED (discrepancy: %s)\n\n", dbuf);
     }
 }

@@ -8,20 +8,23 @@
 extern int verbose;
 void lock_single_account(Account *acc)
 {
-    if (!acc) return;
+    if (!acc)
+        return;
 
     pthread_rwlock_wrlock(&acc->lock);
 }
 
 void unlock_single_account(Account *acc)
 {
-    if (!acc) return;
+    if (!acc)
+        return;
     pthread_rwlock_unlock(&acc->lock);
 }
 
 void acquire_locks_ordered(Account *a, Account *b, Transaction *tx)
 {
-    if (!a || !b || !tx) return;
+    if (!a || !b || !tx)
+        return;
 
     Account *first = (a->account_id < b->account_id) ? a : b;
     Account *second = (first == a) ? b : a;
@@ -29,7 +32,7 @@ void acquire_locks_ordered(Account *a, Account *b, Transaction *tx)
     int tick_before = global_tick;
 
     pthread_rwlock_wrlock(&first->lock);
- 
+
     tx->wait_ticks++; // increment wait tick if there is a lock acquisition
 
     pthread_rwlock_wrlock(&second->lock);
@@ -41,7 +44,8 @@ void acquire_locks_ordered(Account *a, Account *b, Transaction *tx)
 /* release both locks */
 void release_two_locks(Account *a, Account *b)
 {
-    if (!a || !b) return; // SAFETY: null guard
+    if (!a || !b)
+        return; // null guard
     pthread_rwlock_unlock(&a->lock);
     pthread_rwlock_unlock(&b->lock);
 }
