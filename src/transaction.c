@@ -20,7 +20,7 @@ void abort_transaction(Transaction *tx, const char *reason)
 
     tx->status = TX_ABORTED;
     tx->actual_end = global_tick;
-    if (reason)
+    if (verbose && reason)
         fprintf(stderr, "[tx] ABORT T%d: %s\n", tx->tx_id, reason);
 }
 
