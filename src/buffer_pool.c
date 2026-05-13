@@ -71,6 +71,10 @@ void buffer_pool_load(BufferPool *pool, int account_id, Account *acc)
             used++; // increments pool usage
     }
 
+    if (used > metrics.peak_pool_usage)
+        metrics.peak_pool_usage = used;
+
+
     pthread_mutex_unlock(&pool->pool_lock);
 
     sem_post(&pool->full_slots); // Signal slot is full
