@@ -6,20 +6,6 @@
 #include <stdio.h>
 
 extern int verbose;
-void lock_single_account(Account *acc)
-{
-    if (!acc)
-        return;
-
-    pthread_rwlock_wrlock(&acc->lock);
-}
-
-void unlock_single_account(Account *acc)
-{
-    if (!acc)
-        return;
-    pthread_rwlock_unlock(&acc->lock);
-}
 
 void acquire_locks_ordered(Account *a, Account *b, Transaction *tx)
 {
