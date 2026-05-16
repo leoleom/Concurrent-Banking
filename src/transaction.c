@@ -54,8 +54,6 @@ void *execute_transaction(void *arg)
                     op->amount_centavos % 100);
             }
             wait_until_tick(global_tick + 1);
-            pthread_mutex_lock(&tick_lock);
-            pthread_mutex_unlock(&tick_lock);
 
             {
                 Account *acc = bank_find_account(g_bank, op->account_id);
@@ -79,13 +77,6 @@ void *execute_transaction(void *arg)
                 }
             }
 
-            // {
-            //     Account *acc = bank_find_account(g_bank, op->account_id);
-            //     buffer_pool_load(g_pool, op->account_id, acc);
-            //     //deposit(op->account_id, op->amount_centavos);
-            //     buffer_pool_unload(g_pool, op->account_id);
-            //     break;
-            // }
         break;
 
         case OP_WITHDRAW:
@@ -98,8 +89,6 @@ void *execute_transaction(void *arg)
                     op->amount_centavos % 100);
             }
             
-            pthread_mutex_lock(&tick_lock);
-            pthread_mutex_unlock(&tick_lock);
 
             {
                 Account *acc = bank_find_account(g_bank, op->account_id);
