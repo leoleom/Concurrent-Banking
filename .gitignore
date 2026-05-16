@@ -1,0 +1,31 @@
+# Compiled binary
+bankdb.exe
+
+# Object files
+*.o
+*.obj
+
+# Libraries
+*.so
+*.dll
+*.dylib
+*.lib
+*.a
+
+# Build artifacts
+*.out
+*.exe
+*.log
+
+# Debug files
+*.pdb
+*.idb
+
+# OS-specific junk
+.DS_Store
+Thumbs.db
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
