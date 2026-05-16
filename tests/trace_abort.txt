@@ -1,2 +1,2 @@
 # Initial: Account 10 has PHP 100.00
-T1  0  WITHDRAW  10  15000
+T1  0  WITHDRAW  10  150000
